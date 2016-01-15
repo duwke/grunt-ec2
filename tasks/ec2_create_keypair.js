@@ -26,14 +26,32 @@ module.exports = function (grunt) {
         var absolute = conf('SSH_KEYS_FOLDER');
         var relative = conf('SSH_KEYS_RELATIVE');
         var file = path.join(relative, name + '.pem');
-        var pubKeyFile = path.relative(cwd, file + '.pub');
-        var pubKey;
+        //var pubKeyFile = path.relative(cwd, file + '.pub');
+        //var pubKey;
 
         mkdirp.sync(absolute);
 
         grunt.log.writeln('Generating key pair named %s...', chalk.cyan(name));
 
-        async.series([
+        var params = {
+            "KeyName": name
+        };
+        aws.log('ec2 create-key-pair --key-name %s', name);
+        aws.ec2.createKeyPair(params, aws.capture('Create Key Pair', saveKey));
+        
+        function saveKey (result) {
+            var privateKey = result.KeyMaterial;
+            fs.writeFile(file, privateKey, function(err) {
+                if(err) {
+                    return console.log(err);
+                }
+                grunt.log.ok('Key Saved');
+                done();
+            }); 
+
+            grunt.log.ok('Key Created %s', chalk.cyan(name));
+        }
+        /*async.series([
             async.apply(exec, 'ssh-keygen -t rsa -b 2048 -N "" -f %s', [file]),
             async.apply(load),
             async.apply(upload)
@@ -41,7 +59,7 @@ module.exports = function (grunt) {
 
         function load (next) {
             fs.readFile(pubKeyFile, function (err, data) {
-                pubKey = data.toString(); // https://github.com/postrednik - remove of 'base64' parameter to fix the key-import to AWS
+                pubKey = data.toString('base64');
                 next(err);
             });
         }
@@ -57,6 +75,6 @@ module.exports = function (grunt) {
 
             aws.log('ec2 import-key-pair --public-key-material %s --key-name %s', 'file://' + pubKeyFile, name);
             aws.ec2.importKeyPair(params, aws.capture('Upload successful.', next));
-        }
+        }*/
     });
 };

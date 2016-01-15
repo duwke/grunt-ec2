@@ -18,6 +18,8 @@ module.exports = function (grunt) {
         }
 
         // TODO rsync user, node user, nginx user?
+        grunt.log.writeln('setup test');
+
 
         var done = this.async();
         var cert = conf('SRV_RSYNC_CERT');
@@ -53,17 +55,21 @@ module.exports = function (grunt) {
                 ],
                 excludes: ['*']
             }
-        }), [ // node.js
-            'sudo apt-get install python-software-properties',
-            'sudo add-apt-repository ppa:chris-lea/node.js -y',
+        }), [ // node.js fyi, the reason you have to build node is that node on ubuntu is nodejs, and pm2 expects it to be node
             'sudo apt-get update',
-            'sudo apt-get install nodejs -y'
-        ], [ // pm2
             'sudo apt-get install make g++ -y',
+            'sudo apt-get install git -y',
+            'sudo git clone git://github.com/joyent/node.git',
+            'sudo git -C node checkout v0.10.24',
+            '(cd node; sudo ./configure)',
+            '(cd node; sudo make)',
+            '(cd node; sudo make install)'
+        ], [ // pm2
+            'sudo apt-get install npm -y',
             'sudo npm install -g pm2 --unsafe-perm',
             'sudo pm2 startup ubuntu'
         ]];
-
+        
         function forwardPort(from, to) {
             return [
                 util.format('sudo iptables -A PREROUTING -t nat -i eth0 -p tcp --dport %s -j REDIRECT --to-port %s', from, to),
